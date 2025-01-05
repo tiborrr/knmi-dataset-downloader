@@ -71,5 +71,19 @@ class TestCLI(unittest.IsolatedAsyncioTestCase):
             self.assertGreater(len(nc_files), 0, 
                              "No .nc files were downloaded. The default dataset should contain .nc files.")
 
+    async def test_cli_with_defaults(self):
+        """Test CLI with default arguments (no dates specified)."""
+        test_args = [
+            '--output-dir', str(self.test_output_dir)  # Only specify output dir for testing
+        ]
+        
+        with patch('sys.argv', ['knmi-download'] + test_args):
+            await async_main()
+            
+            # Verify files were downloaded
+            nc_files = list(self.test_output_dir.glob('*.nc'))
+            self.assertGreater(len(nc_files), 0, 
+                             "No .nc files were downloaded with default arguments")
+
 if __name__ == '__main__':
     unittest.main() 
