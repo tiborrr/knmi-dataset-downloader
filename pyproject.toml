@@ -1,0 +1,31 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "knmi-dataset-downloader"
+version = "1.0.0"
+description = "A downloader for KNMI weather datasets"
+readme = "README.md"
+authors = [
+    { name = "Tibor Casteleijn" }
+]
+license = { text = "GPL-3.0-or-later" }
+requires-python = ">=3.7"
+dependencies = [
+    "aiofiles==24.1.0",
+    "httpx==0.28.1",
+    "microsoft-kiota-abstractions==1.6.8",
+    "microsoft-kiota-http==1.6.8",
+    "microsoft-kiota-serialization-json==1.6.8",
+    "microsoft-kiota-serialization-text==1.6.8",
+    "microsoft-kiota-serialization-form==1.6.8",
+    "microsoft-kiota-serialization-multipart==1.6.8",
+    "tqdm==4.67.1"
+]
+
+[project.scripts]
+knmi-download = "knmi_dataset_downloader.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/knmi_dataset_downloader"] 
