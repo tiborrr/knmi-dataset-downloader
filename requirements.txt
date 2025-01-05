@@ -1,0 +1,9 @@
+aiofiles==24.1.0
+httpx==0.28.1
+microsoft-kiota-abstractions==1.6.8
+microsoft-kiota-http==1.6.8
+microsoft-kiota-serialization-json==1.6.8
+microsoft-kiota-serialization-text==1.6.8
+microsoft-kiota-serialization-form==1.6.8
+microsoft-kiota-serialization-multipart==1.6.8
+tqdm==4.67.1
