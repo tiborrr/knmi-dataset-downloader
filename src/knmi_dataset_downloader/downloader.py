@@ -253,16 +253,21 @@ class Downloader:
         return f"{size_bytes:.1f} TB"
 
     async def download(
-        self, start_date: datetime | None = None, end_date: datetime | None = None
+        self, start_date: datetime | None = None, end_date: datetime | None = None, limit: int | None = None
     ) -> None:
         """Download all dataset files for the specified date range.
 
         Args:
             start_date (datetime): Start date for the files to download. Defaults to 1 day ago.
             end_date (datetime): End date for the files to download. Defaults to now.
+            limit (int, optional): Maximum number of files to download. If None, downloads all files.
         """
         try:
             files = await self._get_files_list(start_date, end_date)
+            if limit is not None:
+                files = files[:limit]
+                log.debug(f"Limiting download to {limit} files")
+                
             self.stats.total_files = len(files)
             log.info(f"Found {len(files)} files in date range {start_date} to {end_date}")
 

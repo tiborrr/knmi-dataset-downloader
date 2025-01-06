@@ -43,6 +43,9 @@ knmi-download --api-key YOUR_API_KEY --start-date 2024-01-01T00:00:00 --end-date
 
 # Using anonymous API key (automatically fetched)
 knmi-download --start-date 2024-01-01 --end-date 2024-01-31
+
+# Limit the number of files to download
+knmi-download --start-date 2024-01-01 --end-date 2024-01-31 --limit 5
 ```
 
 Available options:
@@ -58,6 +61,7 @@ Options:
                         Default is now
   --api-key TEXT         KNMI API key (optional - will fetch anonymous API key if not provided)
   -o, --output-dir PATH  Output directory for downloaded files
+  --limit INT           Maximum number of files to download (optional)
   --help                 Show this message and exit
 ```
 
@@ -83,7 +87,8 @@ async def main():
     # Download files for a specific date range
     await downloader.download(
         start_date=datetime(2024, 1, 1),
-        end_date=datetime(2024, 1, 31)
+        end_date=datetime(2024, 1, 31),
+        limit=5  # Optional - limit the number of files to download
     )
 
 # Run the download

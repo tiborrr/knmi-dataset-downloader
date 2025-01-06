@@ -71,6 +71,11 @@ async def async_main() -> None:
         default=DEFAULT_OUTPUT_DIR,
         help='Output directory for downloaded files'
     )
+    parser.add_argument(
+        '--limit',
+        type=int,
+        help='Maximum number of files to download'
+    )
 
     args = parser.parse_args()
 
@@ -99,7 +104,7 @@ async def async_main() -> None:
     )
     
     # Download files
-    await downloader.download(start_date=start, end_date=end)
+    await downloader.download(start_date=start, end_date=end, limit=args.limit)
 
 def main() -> None:
     """Synchronous wrapper for async_main."""

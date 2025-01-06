@@ -61,28 +61,34 @@ class TestCLI(unittest.IsolatedAsyncioTestCase):
             '--start-date', '2024-01-01T00:00:00',
             '--end-date', '2024-01-01T00:20:00',    # Just 20 minutes of data
             '--concurrent', '2',
-            '--output-dir', str(self.test_output_dir)  # Test with custom output directory
+            '--output-dir', str(self.test_output_dir),  # Test with custom output directory
+            '--limit', '1'  # Limit to 1 file for testing
         ]
         with patch('sys.argv', ['knmi-download'] + test_args):
             await async_main()  # This will actually download data
             
-            # Verify that at least one .nc file was downloaded
+            # Verify that exactly one .nc file was downloaded
             nc_files = list(self.test_output_dir.glob('*.nc'))
+            self.assertLessEqual(len(nc_files), 1, 
+                             "More than one file was downloaded despite limit=1")
             self.assertGreater(len(nc_files), 0, 
-                             "No .nc files were downloaded. The default dataset should contain .nc files.")
+                             "No .nc files were downloaded")
 
     async def test_cli_with_defaults(self):
         """Test CLI with default arguments (no dates specified)."""
         test_args = [
-            '--output-dir', str(self.test_output_dir)  # Only specify output dir for testing
+            '--output-dir', str(self.test_output_dir),  # Only specify output dir for testing
+            '--limit', '1'  # Limit to 1 file for testing
         ]
         
         with patch('sys.argv', ['knmi-download'] + test_args):
             await async_main()
             
-            # Verify files were downloaded
+            # Verify exactly one file was downloaded
             nc_files = list(self.test_output_dir.glob('*.nc'))
-            self.assertGreater(len(nc_files), 0, 
+            self.assertLessEqual(len(nc_files), 1,
+                             "More than one file was downloaded despite limit=1")
+            self.assertGreater(len(nc_files), 0,
                              "No .nc files were downloaded with default arguments")
 
 if __name__ == '__main__':
