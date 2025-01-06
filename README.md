@@ -2,6 +2,10 @@
 
 A Python package for easily downloading datasets from the KNMI (Royal Netherlands Meteorological Institute) Data Platform. This tool supports concurrent downloads and provides both a command-line interface and a Python API.
 
+## Background
+
+This project was inspired by my experience working at Clairify [www.clairify.io], where I worked extensively with KNMI datasets. After leaving, I had more time to create this tool to address the need for a more streamlined download process. The goal was to simplify dataset acquisition for Python projects, making it easier for developers and data scientists to work with KNMI's valuable meteorological data.
+
 ## Features
 
 - Concurrent downloads for improved performance
