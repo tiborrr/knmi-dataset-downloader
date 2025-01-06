@@ -37,6 +37,10 @@ from .defaults import (
     get_default_date_range,
 )
 from .api_key import get_anonymous_api_key
+
+import logging
+log = logging.getLogger(__name__)
+
 @dataclass
 class DownloadStats:
     """Statistics for the download process."""
@@ -231,10 +235,10 @@ class Downloader:
 
                 self.stats.downloaded_files += 1
                 self.stats.total_bytes_downloaded += downloaded_size
-                # main_progress.write(f"Successfully downloaded: {filename} ({downloaded_size / 1024 / 1024:.1f} MB)")
+                log.debug(f"Successfully downloaded: {filename} ({downloaded_size / 1024 / 1024:.1f} MB)")
 
             except Exception as e:
-                main_progress.write(f"Error downloading {filename}: {str(e)}")
+                log.error(f"Error downloading {filename}: {str(e)}")
                 self.stats.failed_files.append(filename)
                 if output_path.exists():
                     output_path.unlink()  # Remove partially downloaded file
@@ -260,7 +264,7 @@ class Downloader:
         try:
             files = await self._get_files_list(start_date, end_date)
             self.stats.total_files = len(files)
-            print(f"Found {len(files)} files in date range {start_date} to {end_date}")
+            log.info(f"Found {len(files)} files in date range {start_date} to {end_date}")
 
             # Main progress bar for overall progress
             with tqdm(
@@ -273,22 +277,22 @@ class Downloader:
                 await asyncio.gather(*tasks, return_exceptions=True)
 
             # Print summary
-            print("\nDownload Summary:")
-            print(f"Total files found: {self.stats.total_files}")
-            print(f"Files already present: {self.stats.skipped_files}")
-            print(f"Files downloaded: {self.stats.downloaded_files}")
-            print(f"Failed downloads: {len(self.stats.failed_files)}")
-            print(
-                f"Total data downloaded: {self._format_size(self.stats.total_bytes_downloaded)}"
-            )
-
+            # fmt: off
+            log.info("\nDownload Summary:")
+            log.info(f"Total files found:     {self.stats.total_files}")
+            log.info(f"Files already present: {self.stats.skipped_files}")
+            log.info(f"Files downloaded:      {self.stats.downloaded_files}")
+            log.info(f"Failed downloads:      {len(self.stats.failed_files)}")
+            log.info(f"Total data downloaded: {self._format_size(self.stats.total_bytes_downloaded)}")
+            # fmt: on
+            
             if self.stats.failed_files:
-                print("\nFailed downloads:")
+                log.warning("\nFailed downloads:")
                 for filename in self.stats.failed_files:
-                    print(f"- {filename}")
+                    log.warning(f"- {filename}")
 
         except Exception as e:
-            print(f"Error during download process: {str(e)}")
+            log.error(f"Error during download process: {str(e)}")
             raise
 
         finally:
