@@ -6,10 +6,10 @@ from src.knmi_dataset_downloader import Downloader
 from src.knmi_dataset_downloader.downloader import DownloadStats
 from src.knmi_dataset_downloader.api_key import get_anonymous_api_key
 
-class TestDownloader(unittest.TestCase):
-    def setUp(self):
+class TestDownloader(unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self):
         """Set up test fixtures."""
-        self.api_key = asyncio.run(get_anonymous_api_key())
+        self.api_key = await get_anonymous_api_key()
         self.dataset = Downloader(
             dataset_name="Actuele10mindataKNMIstations",
             version="2",
@@ -100,11 +100,10 @@ class TestDownloader(unittest.TestCase):
                 finally:
                     await dataset.http_client.aclose()
 
-    def tearDown(self):
+    async def asyncTearDown(self):
         """Clean up after tests."""
         if hasattr(self, 'dataset') and self.dataset.http_client:
-            import asyncio
-            asyncio.run(self.dataset.http_client.aclose())
+            await self.dataset.http_client.aclose()
 
 if __name__ == '__main__':
     unittest.main() 
