@@ -53,7 +53,7 @@ Options:
   -v, --version TEXT     Version of the dataset (default: 2)
   -c, --concurrent INT   Maximum number of concurrent downloads (default: 10)
   -s, --start-date TEXT  Start date in ISO 8601 format (e.g., 2024-01-01T00:00:00 or 2024-01-01)
-                        Default is 30 minutes ago
+                        Default is 1 hour and 30 minutes ago
   -e, --end-date TEXT    End date in ISO 8601 format (e.g., 2024-01-01T00:00:00 or 2024-01-01)
                         Default is now
   --api-key TEXT         KNMI API key (optional - will fetch anonymous API key if not provided)
