@@ -59,18 +59,46 @@ class TestDownloader(unittest.TestCase):
 
     async def test_download(self):
         """Test file download functionality."""
-        # Test with a small date range to limit the number of files
+        # Test with a small date range and limit to 1 file
         start_date = datetime(2024, 1, 1, 0, 0, 0)
         end_date = datetime(2024, 1, 1, 0, 30, 0)  # Just 30 minutes
         
         try:
-            await self.dataset.download(start_date, end_date)
+            await self.dataset.download(start_date, end_date, limit=1)
             # Check if stats were updated
-            self.assertGreaterEqual(self.dataset.stats.total_files, 0)
-            self.assertGreaterEqual(self.dataset.stats.downloaded_files, 0)
-            self.assertGreaterEqual(self.dataset.stats.skipped_files, 0)
+            self.assertEqual(self.dataset.stats.total_files, 1, "Should only download 1 file")
+            self.assertLessEqual(self.dataset.stats.downloaded_files + self.dataset.stats.skipped_files, 1)
+            self.assertEqual(len(self.dataset.stats.failed_files), 0, "No files should fail")
         except Exception as e:
             self.fail(f"Download failed with error: {str(e)}")
+
+    async def test_download_with_limit(self):
+        """Test download limit functionality."""
+        start_date = datetime(2024, 1, 1, 0, 0, 0)
+        end_date = datetime(2024, 1, 1, 23, 59, 59)  # Full day
+        
+        # Test with different limits
+        for limit in [1, 2, 5]:
+            with self.subTest(limit=limit):
+                dataset = Downloader(
+                    dataset_name="Actuele10mindataKNMIstations",
+                    version="2",
+                    max_concurrent=10,
+                    api_key=self.api_key
+                )
+                try:
+                    await dataset.download(start_date, end_date, limit=limit)
+                    self.assertEqual(dataset.stats.total_files, limit, 
+                                  f"Should limit to {limit} files")
+                    self.assertLessEqual(
+                        dataset.stats.downloaded_files + dataset.stats.skipped_files,
+                        limit,
+                        f"Total processed files should not exceed limit of {limit}"
+                    )
+                except Exception as e:
+                    self.fail(f"Download with limit {limit} failed with error: {str(e)}")
+                finally:
+                    await dataset.http_client.aclose()
 
     def tearDown(self):
         """Clean up after tests."""
