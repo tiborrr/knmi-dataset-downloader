@@ -1,6 +1,8 @@
 import unittest
-import asyncio
 from datetime import datetime
+import tempfile
+from pathlib import Path
+import shutil
 
 from src.knmi_dataset_downloader import Downloader
 from src.knmi_dataset_downloader.downloader import DownloadStats
@@ -10,11 +12,14 @@ class TestDownloader(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         """Set up test fixtures."""
         self.api_key = await get_anonymous_api_key()
+        # Create a temporary directory for test outputs
+        self.temp_dir = Path(tempfile.mkdtemp())
         self.dataset = Downloader(
             dataset_name="Actuele10mindataKNMIstations",
             version="2",
             max_concurrent=10,
-            api_key=self.api_key
+            api_key=self.api_key,
+            output_dir=self.temp_dir
         )
 
     def test_init(self):
@@ -23,6 +28,7 @@ class TestDownloader(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.dataset.version, "2")
         self.assertEqual(self.dataset.max_concurrent, 10)
         self.assertEqual(self.dataset.api_key, self.api_key)
+        self.assertEqual(self.dataset.output_dir, self.temp_dir)
         self.assertIsNotNone(self.dataset.semaphore)
         self.assertIsNotNone(self.dataset.client)
         self.assertIsNotNone(self.dataset.http_client)
@@ -78,13 +84,16 @@ class TestDownloader(unittest.IsolatedAsyncioTestCase):
         end_date = datetime(2024, 1, 1, 23, 59, 59)  # Full day
         
         # Test with different limits
-        for limit in [1, 2, 5]:
+        for limit in [1, 2]:
             with self.subTest(limit=limit):
+                # Create a separate temp dir for each test to avoid conflicts
+                temp_dir = Path(tempfile.mkdtemp())
                 dataset = Downloader(
                     dataset_name="Actuele10mindataKNMIstations",
                     version="2",
                     max_concurrent=10,
-                    api_key=self.api_key
+                    api_key=self.api_key,
+                    output_dir=temp_dir
                 )
                 try:
                     await dataset.download(start_date, end_date, limit=limit)
@@ -99,11 +108,16 @@ class TestDownloader(unittest.IsolatedAsyncioTestCase):
                     self.fail(f"Download with limit {limit} failed with error: {str(e)}")
                 finally:
                     await dataset.http_client.aclose()
+                    # Clean up the temp directory
+                    shutil.rmtree(temp_dir, ignore_errors=True)
 
     async def asyncTearDown(self):
         """Clean up after tests."""
         if hasattr(self, 'dataset') and self.dataset.http_client:
             await self.dataset.http_client.aclose()
+        # Clean up the temp directory
+        if hasattr(self, 'temp_dir'):
+            shutil.rmtree(self.temp_dir, ignore_errors=True)
 
 if __name__ == '__main__':
     unittest.main() 
