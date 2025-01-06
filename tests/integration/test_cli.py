@@ -1,17 +1,14 @@
 import unittest
 import asyncio
-from unittest.mock import patch, MagicMock, AsyncMock
+from unittest.mock import patch
 from datetime import datetime
 import argparse
 from pathlib import Path
 from src.knmi_dataset_downloader.cli import async_main, parse_date
-from src.knmi_dataset_downloader import Downloader
 from src.knmi_dataset_downloader.api_key import get_anonymous_api_key
 from src.knmi_dataset_downloader.defaults import (
-    DEFAULT_OUTPUT_DIR,
     DEFAULT_DATASET_NAME,
     DEFAULT_DATASET_VERSION,
-    DEFAULT_MAX_CONCURRENT,
 )
 
 class TestCLI(unittest.IsolatedAsyncioTestCase):
