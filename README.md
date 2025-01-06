@@ -39,7 +39,7 @@ The simplest way to use the downloader is through the command line:
 
 ```bash
 # Using your own API key
-knmi-download --api-key YOUR_API_KEY --start-date 2024-01-01 --end-date 2024-01-31
+knmi-download --api-key YOUR_API_KEY --start-date 2024-01-01T00:00:00 --end-date 2024-01-31T23:59:59
 
 # Using anonymous API key (automatically fetched)
 knmi-download --start-date 2024-01-01 --end-date 2024-01-31
@@ -52,9 +52,11 @@ Options:
   -d, --dataset TEXT     Name of the dataset to download (default: Actuele10mindataKNMIstations)
   -v, --version TEXT     Version of the dataset (default: 2)
   -c, --concurrent INT   Maximum number of concurrent downloads (default: 10)
-  -s, --start-date TEXT  Start date in ISO 8601 format (YYYY-MM-DD or YYYY-MM-DDThh:mm:ss)
-  -e, --end-date TEXT    End date in ISO 8601 format (YYYY-MM-DD or YYYY-MM-DDThh:mm:ss)
-  --api-key TEXT         KNMI API key [optional - will use anonymous API key if not provided]
+  -s, --start-date TEXT  Start date in ISO 8601 format (e.g., 2024-01-01T00:00:00 or 2024-01-01)
+                        Default is 30 minutes ago
+  -e, --end-date TEXT    End date in ISO 8601 format (e.g., 2024-01-01T00:00:00 or 2024-01-01)
+                        Default is now
+  --api-key TEXT         KNMI API key (optional - will fetch anonymous API key if not provided)
   -o, --output-dir PATH  Output directory for downloaded files
   --help                 Show this message and exit
 ```
@@ -64,17 +66,18 @@ Options:
 You can also use the package in your Python code:
 
 ```python
-from knmi_dataset_downloader import KNMIDataset
+from knmi_dataset_downloader import Downloader
 import asyncio
 from datetime import datetime
 
 async def main():
     # Initialize the downloader with your own API key
-    downloader = KNMIDataset(
+    downloader = Downloader(
         dataset_name="Actuele10mindataKNMIstations",
         version="2",
         max_concurrent=10,
-        api_key="YOUR_API_KEY"  # Optional - will use anonymous API key if not provided
+        api_key="YOUR_API_KEY",  # Optional - will use anonymous API key if not provided
+        output_dir="path/to/output"  # Optional - will use default if not provided
     )
     
     # Download files for a specific date range
