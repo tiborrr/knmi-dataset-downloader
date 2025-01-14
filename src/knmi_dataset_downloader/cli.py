@@ -4,7 +4,7 @@ import argparse
 import asyncio
 from datetime import datetime
 from pathlib import Path
-from .downloader import Downloader
+from . import dataset
 from .defaults import (
     DEFAULT_OUTPUT_DIR,
     DEFAULT_DATASET_NAME,
@@ -53,7 +53,7 @@ async def async_main() -> None:
         '--start-date', '-s',
         default=default_start.isoformat(),
         help='Start date in ISO 8601 format example: 2024-01-01T00:00:00 or 2024-01-01, '
-             'default is 30 minutes ago'
+             'default is 1 hour and 30 minutes ago'
     )
     parser.add_argument(
         '--end-date', '-e',
@@ -94,17 +94,17 @@ async def async_main() -> None:
             print("Please provide an API key using the --api-key argument")
             return
     
-    # Initialize downloader
-    downloader = Downloader(
+    # Download files
+    await dataset.download(
+        api_key=api_key,
         dataset_name=args.dataset,
         version=args.version,
         max_concurrent=args.concurrent,
-        api_key=api_key,
-        output_dir=args.output_dir
+        output_dir=args.output_dir,
+        start_date=start,
+        end_date=end,
+        limit=args.limit
     )
-    
-    # Download files
-    await downloader.download(start_date=start, end_date=end, limit=args.limit)
 
 def main() -> None:
     """Synchronous wrapper for async_main."""

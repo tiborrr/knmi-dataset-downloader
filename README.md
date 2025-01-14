@@ -70,26 +70,27 @@ Options:
 You can also use the package in your Python code:
 
 ```python
-from knmi_dataset_downloader import Downloader
+from knmi_dataset_downloader import dataset
 import asyncio
 from datetime import datetime
 
 async def main():
-    # Initialize the downloader with your own API key
-    downloader = Downloader(
-        dataset_name="Actuele10mindataKNMIstations",
-        version="2",
-        max_concurrent=10,
-        api_key="YOUR_API_KEY",  # Optional - will use anonymous API key if not provided
-        output_dir="path/to/output"  # Optional - will use default if not provided
-    )
-    
     # Download files for a specific date range
-    await downloader.download(
+    stats = await dataset.download(
+        api_key="YOUR_API_KEY",  # Optional - will use anonymous API key if not provided
+        dataset_name="Actuele10mindataKNMIstations",  # Optional - uses default if not provided
+        version="2",  # Optional - uses default if not provided
+        max_concurrent=10,  # Optional - uses default if not provided
+        output_dir="path/to/output",  # Optional - uses default if not provided
         start_date=datetime(2024, 1, 1),
         end_date=datetime(2024, 1, 31),
         limit=5  # Optional - limit the number of files to download
     )
+    
+    # Access download statistics
+    print(f"Total files found: {stats.total_files}")
+    print(f"Files downloaded: {stats.downloaded_files}")
+    print(f"Files skipped: {stats.skipped_files}")
 
 # Run the download
 if __name__ == "__main__":
