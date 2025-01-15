@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from typing import List, NamedTuple
+from typing import List
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -51,15 +51,16 @@ class DownloadStats:
     failed_files: List[str] = field(default_factory=list)
     total_bytes_downloaded: int = 0
 
-class DownloadContext(NamedTuple):
+@dataclass
+class DownloadContext:
     """Context for download operations."""
     client: ApiClient
     http_client: httpx.AsyncClient
-    semaphore: asyncio.Semaphore
     dataset_name: str
     version: str
     output_dir: Path
     stats: DownloadStats
+    semaphore: asyncio.Semaphore = field(default_factory=lambda: asyncio.Semaphore(1))
 
 def initialize_client(api_key: str) -> ApiClient:
     """Initialize the KNMI API client with proper authentication and serialization.
