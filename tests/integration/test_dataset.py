@@ -25,7 +25,6 @@ class TestDownloader(unittest.IsolatedAsyncioTestCase):
         self.context = DownloadContext(
             client=self.client,
             http_client=self.http_client,
-            semaphore=asyncio.Semaphore(1),  # Single concurrent operation for testing
             dataset_name="Actuele10mindataKNMIstations",
             version="2",
             output_dir=self.temp_dir,
