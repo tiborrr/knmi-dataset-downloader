@@ -20,6 +20,7 @@ from kiota_serialization_json.json_serialization_writer_factory import (
 from kiota_serialization_json.json_parse_node_factory import JsonParseNodeFactory
 
 from .knmi_dataset_api.api_client import ApiClient
+from .knmi_dataset_api.models.file_summary import FileSummary
 from .knmi_dataset_api.v1.datasets.item.versions.item.files.files_request_builder import (
     FilesRequestBuilder,
 )
@@ -97,7 +98,7 @@ async def get_files_list(
     start_date: datetime | None = None,
     end_date: datetime | None = None,
     limit: int | None = None,
-) -> List:
+) -> List[FileSummary]:
     """Get list of files for the specified date range.
 
     Args:
@@ -107,7 +108,7 @@ async def get_files_list(
         limit (int | None): Maximum number of files to retrieve. Defaults to None.
 
     Returns:
-        List[FileInfo]: List of file information objects from the KNMI API
+        List[FileSummary]: List of file information objects from the KNMI API
     """
     # Use default date range if not specified
     if start_date is None or end_date is None:
@@ -138,8 +139,8 @@ async def get_files_list(
     )
 
     response = await (
-        context.client.v1.datasets.by_dataset_name(context.dataset_name)
-        .versions.by_version_id(context.version)
+        context.client.v1.datasets.by_dataset_name(dataset_name=context.dataset_name)
+        .versions.by_version_id(version_id=context.version)
         .files.get(request_configuration=request_configuration)
     )
 
@@ -152,8 +153,8 @@ async def get_files_list(
     while response.is_truncated:
         config.next_page_token = response.next_page_token
         response = await (
-            context.client.v1.datasets.by_dataset_name(context.dataset_name)
-            .versions.by_version_id(context.version)
+            context.client.v1.datasets.by_dataset_name(dataset_name=context.dataset_name)
+            .versions.by_version_id(version_id=context.version)
             .files.get(request_configuration=request_configuration)
         )
         if response is None:
@@ -164,13 +165,21 @@ async def get_files_list(
 
     return all_files[:limit]
 
-async def download_file(context: DownloadContext, filename: str, main_progress: tqdm) -> None:
+async def download_file(
+    context: DownloadContext,
+    filename: str,
+    expected_size: int,
+    files_progress: tqdm,
+    bytes_progress: tqdm,
+) -> None:
     """Download a single file from the dataset.
 
     Args:
         context (DownloadContext): Download context containing clients and configuration
         filename (str): Name of the file to download
-        main_progress (tqdm): Main progress bar for overall progress
+        expected_size (int): Expected size of the file in bytes
+        files_progress (tqdm): Progress bar for number of files
+        bytes_progress (tqdm): Progress bar for total bytes downloaded
     """
     async with context.semaphore:  # Limit concurrent downloads
         output_path = context.output_dir / filename
@@ -178,13 +187,14 @@ async def download_file(context: DownloadContext, filename: str, main_progress: 
         
         if output_path.exists():
             context.stats.skipped_files += 1
-            main_progress.update(1)
+            files_progress.update(n=1)
+            bytes_progress.update(n=expected_size)
             return
 
         try:
             download_url = await (
-                context.client.v1.datasets.by_dataset_name(context.dataset_name)
-                .versions.by_version_id(context.version)
+                context.client.v1.datasets.by_dataset_name(dataset_name=context.dataset_name)
+                .versions.by_version_id(version_id=context.version)
                 .files.by_filename(filename=filename)
                 .url.get()
             )
@@ -192,36 +202,32 @@ async def download_file(context: DownloadContext, filename: str, main_progress: 
             if download_url is None or download_url.temporary_download_url is None:
                 raise ValueError("No download URL found")
 
-            # Get file size with a HEAD request
-            async with context.http_client.stream(
-                "HEAD", download_url.temporary_download_url
-            ) as response:
-                total_size = int(response.headers.get("content-length", 0))
-
             # Create progress bar for this file
             file_progress = tqdm(
-                total=total_size,
+                total=expected_size,
+                desc=f"Downloading {filename}",
                 unit="iB",
                 unit_scale=True,
-                desc=f"Downloading {filename}",
                 leave=False,
             )
 
             # Stream the download with progress
             async with context.http_client.stream(
-                "GET", download_url.temporary_download_url
+                method="GET",
+                url=download_url.temporary_download_url
             ) as response:
                 response.raise_for_status()
-                async with aiofiles.open(output_path, mode="wb") as f:
+                async with aiofiles.open(file=output_path, mode="wb") as f:
                     downloaded_size = 0
                     async for chunk in response.aiter_bytes(chunk_size=8192):
                         await f.write(chunk)
                         chunk_size = len(chunk)
                         downloaded_size += chunk_size
-                        file_progress.update(chunk_size)
+                        file_progress.update(n=chunk_size)
+                        bytes_progress.update(n=chunk_size)
 
             file_progress.close()
-            main_progress.update(1)
+            files_progress.update(n=1)
 
             context.stats.downloaded_files += 1
             context.stats.total_bytes_downloaded += downloaded_size
@@ -278,29 +284,54 @@ async def download(
     )
 
     try:
-        files = await get_files_list(context, start_date, end_date, limit)
+        files = await get_files_list(
+            context=context,
+            start_date=start_date,
+            end_date=end_date,
+            limit=limit
+        )
             
         context.stats.total_files = len(files)
-        log.info(f"Found {len(files)} files in date range {start_date} to {end_date}")
+        total_size = sum(file.size or 0 for file in files)
+        log.info(f"Found {len(files)} files in date range {start_date} to {end_date} (Total size: {format_size(total_size)})")
 
-        # Main progress bar for overall progress
+        # Main progress bar for overall progress (both files and bytes)
         with tqdm(
-            total=len(files), desc="Overall Progress", unit="file"
-        ) as main_progress:
+            total=total_size,
+            desc="Overall Progress",
+            unit="iB",
+            unit_scale=True,
+            unit_divisor=1024,
+            miniters=1,
+        ) as bytes_progress, tqdm(
+            total=len(files),
+            desc="Files Progress",
+            unit="file",
+            leave=False,
+            miniters=1,
+        ) as files_progress:
             # Download files concurrently with semaphore limiting
             tasks = [
-                download_file(context, file.filename, main_progress) for file in files
+                download_file(
+                    context=context,
+                    filename=file.filename,
+                    expected_size=file.size or 0,
+                    files_progress=files_progress,
+                    bytes_progress=bytes_progress
+                )
+                for file in files
+                if file.filename is not None  # Skip files with no filename
             ]
             await asyncio.gather(*tasks, return_exceptions=True)
 
         # Print summary
         # fmt: off
         log.info("\nDownload Summary:")
-        log.info(f"Total files found:     {context.stats.total_files}")
-        log.info(f"Files already present: {context.stats.skipped_files}")
-        log.info(f"Files downloaded:      {context.stats.downloaded_files}")
-        log.info(f"Failed downloads:      {len(context.stats.failed_files)}")
-        log.info(f"Total data downloaded: {format_size(context.stats.total_bytes_downloaded)}")
+        log.info(f"Total files found:      {context.stats.total_files}")
+        log.info(f"Files already present:  {context.stats.skipped_files}")
+        log.info(f"Files downloaded:       {context.stats.downloaded_files}")
+        log.info(f"Failed downloads:       {len(context.stats.failed_files)}")
+        log.info(f"Total data downloaded:  {format_size(context.stats.total_bytes_downloaded)}")
         # fmt: on
         
         if context.stats.failed_files:

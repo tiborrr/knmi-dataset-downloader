@@ -10,18 +10,21 @@ from .defaults import (
     DEFAULT_DATASET_NAME,
     DEFAULT_DATASET_VERSION,
     DEFAULT_MAX_CONCURRENT,
+    DEFAULT_TIME_WINDOW,
     get_default_date_range,
 )
 from .api_key import get_anonymous_api_key
 
 def parse_date(date_str: str) -> datetime | None:
-    """Parse date string in ISO 8601 format."""
+    """Parse date string in ISO 8601 format (e.g., 2024-01-01T00:00:00 or 2024-01-01)."""
     if not date_str:
         return None
     try:
         return datetime.fromisoformat(date_str)
     except ValueError:
-        raise argparse.ArgumentTypeError("Date must be in ISO 8601 format")
+        raise argparse.ArgumentTypeError(
+            "Date must be in ISO 8601 format (e.g., 2024-01-01T00:00:00 or 2024-01-01)"
+        )
 
 async def async_main() -> None:
     """Download KNMI dataset files."""
@@ -34,39 +37,39 @@ async def async_main() -> None:
     default_start, default_end = get_default_date_range()
     
     parser.add_argument(
-        '--dataset', '-d',
+        '-d', '--dataset',
         default=DEFAULT_DATASET_NAME,
-        help='Name of the dataset to download'
+        help=f'Name of the dataset to download (default: {DEFAULT_DATASET_NAME})'
     )
     parser.add_argument(
-        '--version', '-v',
+        '-v', '--version',
         default=DEFAULT_DATASET_VERSION,
-        help='Version of the dataset'
+        help=f'Version of the dataset (default: {DEFAULT_DATASET_VERSION})'
     )
     parser.add_argument(
-        '--concurrent', '-c',
+        '-c', '--concurrent',
         type=int,
         default=DEFAULT_MAX_CONCURRENT,
-        help='Maximum number of concurrent downloads'
+        help=f'Maximum number of concurrent downloads (default: {DEFAULT_MAX_CONCURRENT})'
     )
     parser.add_argument(
-        '--start-date', '-s',
+        '-s', '--start-date',
         default=default_start.isoformat(),
-        help='Start date in ISO 8601 format example: 2024-01-01T00:00:00 or 2024-01-01, '
-             'default is 1 hour and 30 minutes ago'
+        help=f'Start date in ISO 8601 format (e.g., 2024-01-01T00:00:00 or 2024-01-01)\n'
+             f'Default is {DEFAULT_TIME_WINDOW.total_seconds() / 60} minutes ago'
     )
     parser.add_argument(
-        '--end-date', '-e',
+        '-e', '--end-date',
         default=default_end.isoformat(),
-        help='End date in ISO 8601 format example: 2024-01-01T00:00:00 or 2024-01-01, '
-             'default is now'
+        help=f'End date in ISO 8601 format (e.g., 2024-01-01T00:00:00 or 2024-01-01)\n'
+             f'Default is now'
     )
     parser.add_argument(
         '--api-key',
-        help='KNMI API key. If not provided, will attempt to fetch the anonymous API key from the KNMI developer portal.'
+        help='KNMI API key (optional - will fetch anonymous API key if not provided)'
     )
     parser.add_argument(
-        '--output-dir', '-o',
+        '-o', '--output-dir',
         type=Path,
         default=DEFAULT_OUTPUT_DIR,
         help='Output directory for downloaded files'
@@ -74,7 +77,7 @@ async def async_main() -> None:
     parser.add_argument(
         '--limit',
         type=int,
-        help='Maximum number of files to download'
+        help='Maximum number of files to download (optional)'
     )
 
     args = parser.parse_args()

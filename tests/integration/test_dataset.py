@@ -4,9 +4,12 @@ from datetime import datetime
 import tempfile
 from pathlib import Path
 import shutil
+import asyncio
 
 from src.knmi_dataset_downloader import download, DownloadStats
 from src.knmi_dataset_downloader.api_key import get_anonymous_api_key
+from src.knmi_dataset_downloader.dataset import get_files_list, DownloadContext, initialize_client
+import httpx
 
 class TestDownloader(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
@@ -15,6 +18,19 @@ class TestDownloader(unittest.IsolatedAsyncioTestCase):
         self.api_key = "eyJvcmciOiI1ZTU1NGUxOTI3NGE5NjAwMDEyYTNlYjEiLCJpZCI6IjI0N2M3NDRkNjdhOTQ0NGY5ODdjYmFlNjllYjhmZGY5IiwiaCI6Im11cm11cjEyOCJ9"
         # Create a temporary directory for test outputs
         self.temp_dir = Path(tempfile.mkdtemp())
+        
+        # Initialize context for API calls
+        self.client = initialize_client(self.api_key)
+        self.http_client = httpx.AsyncClient()
+        self.context = DownloadContext(
+            client=self.client,
+            http_client=self.http_client,
+            semaphore=asyncio.Semaphore(1),  # Single concurrent operation for testing
+            dataset_name="Actuele10mindataKNMIstations",
+            version="2",
+            output_dir=self.temp_dir,
+            stats=DownloadStats()
+        )
 
     def test_download_stats(self):
         """Test DownloadStats initialization and updates."""
@@ -24,6 +40,49 @@ class TestDownloader(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(stats.downloaded_files, 0)
         self.assertEqual(stats.failed_files, [])
         self.assertEqual(stats.total_bytes_downloaded, 0)
+
+    async def test_api_size_matches_file_size(self):
+        """Test that the API's reported file size matches the actual downloaded file size."""
+        # Get a single file from a small time window
+        start_date = datetime(2024, 1, 1, 0, 0, 0)
+        end_date = datetime(2024, 1, 1, 0, 30, 0)
+        
+        # Get file list from API
+        files = await get_files_list(
+            context=self.context,
+            start_date=start_date,
+            end_date=end_date,
+            limit=1
+        )
+        
+        self.assertGreater(len(files), 0, "No files found in the test period")
+        test_file = files[0]
+        
+        # Ensure we have a size from the API
+        self.assertIsNotNone(test_file.size, "API did not return a file size")
+        api_size = test_file.size
+        
+        # Download the file
+        await download(
+            api_key=self.api_key,
+            output_dir=self.temp_dir,
+            start_date=start_date,
+            end_date=end_date,
+            limit=1
+        )
+        
+        # Find the downloaded file
+        downloaded_files = list(self.temp_dir.glob("**/*"))
+        self.assertEqual(len(downloaded_files), 1, "Expected exactly one downloaded file")
+        downloaded_file = downloaded_files[0]
+        
+        # Compare sizes
+        actual_size = downloaded_file.stat().st_size
+        self.assertEqual(
+            actual_size,
+            api_size,
+            f"API reported size ({api_size} bytes) does not match actual file size ({actual_size} bytes)"
+        )
 
     async def test_download(self):
         """Test file download functionality."""
@@ -71,6 +130,9 @@ class TestDownloader(unittest.IsolatedAsyncioTestCase):
 
     async def asyncTearDown(self):
         """Clean up after tests."""
+        # Close the HTTP client
+        if hasattr(self, 'http_client'):
+            await self.http_client.aclose()
         # Clean up the temp directory
         if hasattr(self, 'temp_dir'):
             shutil.rmtree(self.temp_dir, ignore_errors=True)
