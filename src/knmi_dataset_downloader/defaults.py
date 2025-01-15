@@ -13,9 +13,12 @@ DEFAULT_DATASET_VERSION = "2"
 # Default maximum number of concurrent downloads
 DEFAULT_MAX_CONCURRENT = 10
 
+# Default time window
+DEFAULT_TIME_WINDOW = timedelta(hours=1, minutes=30)
+
 # Default date range
 def get_default_date_range() -> tuple[datetime, datetime]:
     """Get the default date range (now - 1 hour and 30 minutes to now)."""
     end = datetime.now()
-    start = end - timedelta(hours=1, minutes=30)
+    start = end - DEFAULT_TIME_WINDOW
     return start, end
