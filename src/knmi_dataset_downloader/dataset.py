@@ -118,13 +118,9 @@ async def get_files_list(
 
     if isinstance(start_date, datetime):
         begin = start_date.strftime("%Y-%m-%dT%H:%M:%S+00:00")
-    else:
-        begin = None
 
     if isinstance(end_date, datetime):
         end = end_date.strftime("%Y-%m-%dT%H:%M:%S+00:00")
-    else:
-        end = None
 
     config = FilesRequestBuilder.FilesRequestBuilderGetQueryParameters(
         max_keys=limit,
