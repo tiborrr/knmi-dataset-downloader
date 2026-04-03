@@ -4,132 +4,149 @@ A Python package for easily downloading datasets from the KNMI (Royal Netherland
 
 ## Background
 
-This project was inspired by my experience working at Clairify [www.clairify.io], where I worked extensively with KNMI datasets. After leaving, I had more time to create this tool to address the need for a more streamlined download process. The goal was to simplify dataset acquisition for Python projects, making it easier for developers and data scientists to work with KNMI's valuable meteorological data.
+This project was inspired by my experience working at Clairify ([https://www.clairify.io](https://www.clairify.io)), where I worked extensively with KNMI datasets. After leaving, I had more time to create this tool to address the need for a more streamlined download process. The goal was to simplify dataset acquisition for Python projects, making it easier for developers and data scientists to work with KNMI's valuable meteorological data.
 
 ## Features
 
 - Concurrent downloads for improved performance
-- Progress bars for both overall and individual file downloads
-- Support for date range filtering
-- Skips already downloaded files
-- Both CLI and Python API interfaces
-- Detailed download statistics
-- Anonymous API key support with automatic fetching
-- Built with Kiota-generated API client for type-safe KNMI API interactions
-- Request timeouts for improved reliability
+- Progress bars for overall and per-file downloads
+- Date range filtering (CLI and API translate times to UTC for the KNMI list-files API)
+- Skips files that are already present on disk
+- CLI and Python `async` API
+- Download statistics (`DownloadStats`)
+- Anonymous API key: optional automatic fetch from the KNMI developer portal (HTTP client timeout on that request)
+- Kiota-generated client for the KNMI Open Data API
 
 ## Installation
 
-You can install the package using pip:
+From [PyPI](https://pypi.org/project/knmi-dataset-downloader/):
 
 ```bash
 pip install knmi-dataset-downloader
 ```
 
+**From source** (dependencies are declared in `pyproject.toml`; lockfile is `uv.lock` if you use [uv](https://docs.astral.sh/uv/)):
+
+```bash
+git clone https://github.com/tiborrr/knmi-dataset-downloader.git
+cd knmi-dataset-downloader
+uv sync                  # recommended: creates .venv and installs project + dev tools
+# or: pip install .
+```
+
 ## Prerequisites
 
-- Python 3.7 or higher
-- A KNMI Data Platform API key (optional - will use anonymous API key if not provided)
+- **Python 3.14+** (see `requires-python` in `pyproject.toml`)
+- KNMI Data Platform API key **optional** — if you omit `--api-key` / `api_key`, an anonymous key is fetched from the developer portal
 
 ## Usage
 
-### Command Line Interface
-
-The simplest way to use the downloader is through the command line:
+### Command line
 
 ```bash
-# Using your own API key
+# With your own API key
 knmi-download --api-key YOUR_API_KEY --start-date 2024-01-01T00:00:00 --end-date 2024-01-31T23:59:59
 
-# Using anonymous API key (automatically fetched)
+# Anonymous key (fetched for you)
 knmi-download --start-date 2024-01-01 --end-date 2024-01-31
 
-# Limit the number of files to download
+# Cap how many files to download
 knmi-download --start-date 2024-01-01 --end-date 2024-01-31 --limit 5
 ```
 
-Available options:
+If you omit `--start-date` / `--end-date`, the CLI defaults to the **last 1 hour 30 minutes in UTC** through **now (UTC)**.
 
-```bash
-Options:
-  -d, --dataset TEXT     Name of the dataset to download (default: Actuele10mindataKNMIstations)
-  -v, --version TEXT     Version of the dataset (default: 2)
-  -c, --concurrent INT   Maximum number of concurrent downloads (default: 10)
-  -s, --start-date TEXT  Start date in ISO 8601 format (e.g., 2024-01-01T00:00:00 or 2024-01-01)
-                        Default is 1 hour and 30 minutes ago
-  -e, --end-date TEXT    End date in ISO 8601 format (e.g., 2024-01-01T00:00:00 or 2024-01-01)
-                        Default is now
-  --api-key TEXT         KNMI API key (optional - will fetch anonymous API key if not provided)
-  -o, --output-dir PATH  Output directory for downloaded files
-  --limit INT           Maximum number of files to download (optional)
-  --help                 Show this message and exit
-```
+Use `-o` / `--output-dir` to choose where files go (default: `./datasets` relative to the current working directory).
+
+Typical options (see `knmi-download --help` for the full list):
+
+| Option | Description |
+|--------|-------------|
+| `-d`, `--dataset` | Dataset name (default: `Actuele10mindataKNMIstations`) |
+| `-v`, `--version` | Dataset version (default: `2`) |
+| `-c`, `--concurrent` | Max concurrent downloads (default: `10`) |
+| `-s`, `--start-date` | ISO 8601 start (default: ~1h30 ago UTC) |
+| `-e`, `--end-date` | ISO 8601 end (default: now UTC) |
+| `--api-key` | KNMI API key (optional) |
+| `-o`, `--output-dir` | Output directory (default: `./datasets`) |
+| `--limit` | Maximum number of files |
 
 ### Python API
 
-You can also use the package in your Python code:
-
 ```python
-from knmi_dataset_downloader import dataset
 import asyncio
 from datetime import datetime
 
-async def main():
-    # Download files for a specific date range
-    stats = await dataset.download(
-        api_key="YOUR_API_KEY",  # Optional - will use anonymous API key if not provided
-        dataset_name="Actuele10mindataKNMIstations",  # Optional - uses default if not provided
-        version="2",  # Optional - uses default if not provided
-        max_concurrent=10,  # Optional - uses default if not provided
-        output_dir="path/to/output",  # Optional - uses default if not provided
-        start_date=datetime(2024, 1, 1),
-        end_date=datetime(2024, 1, 31),
-        limit=5  # Optional - limit the number of files to download
+from knmi_dataset_downloader import download, DownloadStats
+
+
+async def main() -> None:
+    stats: DownloadStats = await download(
+        api_key="YOUR_API_KEY",  # Optional; anonymous key is used if omitted / None
+        dataset_name="Actuele10mindataKNMIstations",
+        version="2",
+        max_concurrent=10,
+        output_dir="path/to/output",  # default: ./datasets
+        start_date=datetime(2024, 1, 1, 0, 0, 0),
+        end_date=datetime(2024, 1, 31, 23, 59, 59),
+        limit=5,
     )
-    
-    # Access download statistics
     print(f"Total files found: {stats.total_files}")
     print(f"Files downloaded: {stats.downloaded_files}")
     print(f"Files skipped: {stats.skipped_files}")
 
-# Run the download
+
 if __name__ == "__main__":
     asyncio.run(main())
 ```
 
-## Download Statistics
+Public re-exports also include `DEFAULT_DATASET_NAME`, `DEFAULT_DATASET_VERSION`, `DEFAULT_MAX_CONCURRENT`, and `DEFAULT_OUTPUT_DIR` from `knmi_dataset_downloader`.
 
-After each download session, the tool provides detailed statistics including:
-- Total number of files found
-- Number of files already present (skipped)
-- Number of files downloaded
-- Number of failed downloads
-- Total data downloaded
-- List of any failed downloads
+## Download statistics
+
+Each run reports:
+
+- Total files matching the query
+- Skipped (already on disk)
+- Downloaded
+- Failures (with names in `stats.failed_files`)
+- Total bytes downloaded
 
 ## Configuration
 
-By default, files are downloaded to a directory specified by `DATASET_OUTPUT_DIR` in your configuration. You can modify this by setting the appropriate environment variable or updating the config file.
+There is **no** `DATASET_OUTPUT_DIR` environment variable in this package. Outputs go to:
 
-## Error Handling
+- **Default:** `./datasets` (see `DEFAULT_OUTPUT_DIR` in `knmi_dataset_downloader.defaults`), or
+- **CLI:** `--output-dir` / `-o`, or
+- **API:** `output_dir=` on `download()`.
 
-- The downloader automatically skips existing files
-- Partially downloaded files are removed in case of failures
-- Failed downloads are logged and reported in the final statistics
+## Error handling
+
+- Existing files are skipped (not re-downloaded by default).
+- Partial files are removed if a download fails.
+- Failures are logged and listed on `DownloadStats.failed_files`.
+
+Heavy use of the **anonymous** Open Data API can result in **HTTP 429**; KNMI may require a **cooldown** (on the order of an hour) before retrying.
+
+## Developing
+
+- **Tests:** `pytest` with `pytest-asyncio` (`uv run pytest` or `pytest tests` with dev deps installed).
+- **Lint / types:** `uv run ruff check src tests`, `uv run basedpyright src tests` (see `pyproject.toml`).
+- **Integration tests** call the real KNMI API; they may **skip** on 429.
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
+Contributions are welcome. Please open a Pull Request; for larger changes, open an issue first.
 
 ## License
 
-This project is licensed under the GNU General Public License v3.0 - see the LICENSE file for details.
+This project is licensed under the GNU General Public License v3.0 or later — see the [LICENSE](LICENSE) file.
 
 ## Acknowledgments
 
-- KNMI for providing the Data Platform API
-- Built with Python's asyncio for efficient concurrent downloads
+- KNMI for the Data Platform API
+- Async I/O via `asyncio` and `httpx`
 
 ## Support
 
-If you encounter any problems or have suggestions, please [open an issue](https://github.com/tiborrr/knmi-dataset-downloader/issues) on GitHub.
+Problems or suggestions: [open an issue](https://github.com/tiborrr/knmi-dataset-downloader/issues).
