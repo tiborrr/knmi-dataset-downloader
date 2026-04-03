@@ -14,5 +14,12 @@
         "src/knmi_dataset_downloader/knmi_dataset_api",
         ".venv",
         ".venv-test"
-    ]
+    ],
+    "cursorpyright.analysis.diagnosticMode": "workspace",
+    "cursorpyright.analysis.exclude": [
+        "src/knmi_dataset_downloader/knmi_dataset_api",
+        ".venv",
+        ".venv-test"
+    ],
+    "cursorpyright.analysis.typeCheckingMode": "basic"
 }

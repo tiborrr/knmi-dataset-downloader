@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 import asyncio
-from typing import List
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
+from typing import Protocol
 
 import aiofiles
 import httpx
-from tqdm.asyncio import tqdm
+from tqdm.asyncio import tqdm as async_tqdm
 from kiota_abstractions.authentication.api_key_authentication_provider import (
     ApiKeyAuthenticationProvider,
     KeyLocation,
@@ -40,20 +40,32 @@ from .defaults import (
 from .api_key import get_anonymous_api_key
 
 import logging
+
 log = logging.getLogger(__name__)
+
+
+class _SupportsTqdmUpdate(Protocol):
+    """Structural type for tqdm / tqdm.asyncio instances used in ``download_file``."""
+
+    def update(self, n: float = 1) -> bool | None: ...
+    def close(self) -> None: ...
+
 
 @dataclass
 class DownloadStats:
     """Statistics for the download process."""
+
     total_files: int = 0
     skipped_files: int = 0
     downloaded_files: int = 0
-    failed_files: List[str] = field(default_factory=list)
+    failed_files: list[str] = field(default_factory=list)
     total_bytes_downloaded: int = 0
+
 
 @dataclass
 class DownloadContext:
     """Context for download operations."""
+
     client: ApiClient
     http_client: httpx.AsyncClient
     dataset_name: str
@@ -61,6 +73,7 @@ class DownloadContext:
     output_dir: Path
     stats: DownloadStats
     semaphore: asyncio.Semaphore = field(default_factory=lambda: asyncio.Semaphore(1))
+
 
 def initialize_client(api_key: str) -> ApiClient:
     """Initialize the KNMI API client with proper authentication and serialization.
@@ -86,6 +99,7 @@ def initialize_client(api_key: str) -> ApiClient:
 
     return ApiClient(request_adapter)
 
+
 def format_size(size_bytes: int) -> str:
     """Format bytes into human readable string."""
     for unit in ["B", "KB", "MB", "GB"]:
@@ -94,12 +108,20 @@ def format_size(size_bytes: int) -> str:
         size_bytes = int(size_bytes / 1024)
     return f"{size_bytes:.1f} TB"
 
+
+def _api_utc_iso(dt: datetime) -> str:
+    """Format *dt* as a UTC instant with +00:00 for KNMI list-files queries."""
+    if dt.tzinfo is None:
+        dt = dt.astimezone()
+    return dt.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S+00:00")
+
+
 async def get_files_list(
     context: DownloadContext,
     start_date: datetime | None = None,
     end_date: datetime | None = None,
     limit: int | None = None,
-) -> List[FileSummary]:
+) -> list[FileSummary]:
     """Get list of files for the specified date range.
 
     Args:
@@ -109,7 +131,7 @@ async def get_files_list(
         limit (int | None): Maximum number of files to retrieve. Defaults to None.
 
     Returns:
-        List[FileSummary]: List of file information objects from the KNMI API
+        list[FileSummary]: List of file information objects from the KNMI API
     """
     # Use default date range if not specified
     if start_date is None or end_date is None:
@@ -117,22 +139,22 @@ async def get_files_list(
         start_date = start_date or default_start
         end_date = end_date or default_end
 
-    if isinstance(start_date, datetime):
-        begin = start_date.strftime("%Y-%m-%dT%H:%M:%S+00:00")
-
-    if isinstance(end_date, datetime):
-        end = end_date.strftime("%Y-%m-%dT%H:%M:%S+00:00")
+    assert isinstance(start_date, datetime) and isinstance(end_date, datetime)
+    begin = _api_utc_iso(start_date)
+    end_iso = _api_utc_iso(end_date)
 
     config = FilesRequestBuilder.FilesRequestBuilderGetQueryParameters(
         max_keys=limit,
         order_by=GetOrderByQueryParameterType.LastModified,
         sorting=GetSortingQueryParameterType.Desc,
         begin=begin,
-        end=end,
+        end=end_iso,
     )
 
-    request_configuration = FilesRequestBuilder.FilesRequestBuilderGetRequestConfiguration(
-        query_parameters=config
+    request_configuration = (
+        FilesRequestBuilder.FilesRequestBuilderGetRequestConfiguration(
+            query_parameters=config
+        )
     )
 
     response = await (
@@ -150,7 +172,9 @@ async def get_files_list(
     while response.is_truncated:
         config.next_page_token = response.next_page_token
         response = await (
-            context.client.v1.datasets.by_dataset_name(dataset_name=context.dataset_name)
+            context.client.v1.datasets.by_dataset_name(
+                dataset_name=context.dataset_name
+            )
             .versions.by_version_id(version_id=context.version)
             .files.get(request_configuration=request_configuration)
         )
@@ -162,12 +186,13 @@ async def get_files_list(
 
     return all_files[:limit]
 
+
 async def download_file(
     context: DownloadContext,
     filename: str,
     expected_size: int,
-    files_progress: tqdm,
-    bytes_progress: tqdm,
+    files_progress: _SupportsTqdmUpdate,
+    bytes_progress: _SupportsTqdmUpdate,
 ) -> None:
     """Download a single file from the dataset.
 
@@ -175,22 +200,24 @@ async def download_file(
         context (DownloadContext): Download context containing clients and configuration
         filename (str): Name of the file to download
         expected_size (int): Expected size of the file in bytes
-        files_progress (tqdm): Progress bar for number of files
-        bytes_progress (tqdm): Progress bar for total bytes downloaded
+        files_progress: tqdm instance for per-file count (``tqdm.asyncio``).
+        bytes_progress: tqdm instance for byte totals (``tqdm.asyncio``).
     """
     async with context.semaphore:  # Limit concurrent downloads
         output_path = context.output_dir / filename
         output_path.parent.mkdir(parents=True, exist_ok=True)  # Ensure directory exists
-        
+
         if output_path.exists():
             context.stats.skipped_files += 1
-            files_progress.update(n=1)
-            bytes_progress.update(n=expected_size)
+            _ = files_progress.update(n=1)
+            _ = bytes_progress.update(n=expected_size)
             return
 
         try:
             download_url = await (
-                context.client.v1.datasets.by_dataset_name(dataset_name=context.dataset_name)
+                context.client.v1.datasets.by_dataset_name(
+                    dataset_name=context.dataset_name
+                )
                 .versions.by_version_id(version_id=context.version)
                 .files.by_filename(filename=filename)
                 .url.get()
@@ -200,7 +227,7 @@ async def download_file(
                 raise ValueError("No download URL found")
 
             # Create progress bar for this file
-            file_progress = tqdm(
+            file_progress = async_tqdm(
                 total=expected_size,
                 desc=f"Downloading {filename}",
                 unit="iB",
@@ -210,25 +237,26 @@ async def download_file(
 
             # Stream the download with progress
             async with context.http_client.stream(
-                method="GET",
-                url=download_url.temporary_download_url
+                method="GET", url=download_url.temporary_download_url
             ) as response:
-                response.raise_for_status()
+                _ = response.raise_for_status()
                 async with aiofiles.open(file=output_path, mode="wb") as f:
                     downloaded_size = 0
                     async for chunk in response.aiter_bytes(chunk_size=8192):
-                        await f.write(chunk)
+                        _ = await f.write(chunk)
                         chunk_size = len(chunk)
                         downloaded_size += chunk_size
-                        file_progress.update(n=chunk_size)
-                        bytes_progress.update(n=chunk_size)
+                        _ = file_progress.update(n=chunk_size)
+                        _ = bytes_progress.update(n=chunk_size)
 
-            file_progress.close()
-            files_progress.update(n=1)
+            _ = file_progress.close()
+            _ = files_progress.update(n=1)
 
             context.stats.downloaded_files += 1
             context.stats.total_bytes_downloaded += downloaded_size
-            log.debug(f"Successfully downloaded: {filename} ({downloaded_size / 1024 / 1024:.1f} MB)")
+            log.debug(
+                f"Successfully downloaded: {filename} ({downloaded_size / 1024 / 1024:.1f} MB)"
+            )
 
         except Exception as e:
             log.error(f"Error downloading {filename}: {str(e)}")
@@ -236,6 +264,7 @@ async def download_file(
             if output_path.exists():
                 output_path.unlink()  # Remove partially downloaded file
             raise
+
 
 async def download(
     api_key: str | None = None,
@@ -269,7 +298,7 @@ async def download(
     client = initialize_client(api_key)
     http_client = httpx.AsyncClient()
     stats = DownloadStats()
-    
+
     context = DownloadContext(
         client=client,
         http_client=http_client,
@@ -277,36 +306,38 @@ async def download(
         dataset_name=dataset_name,
         version=version,
         output_dir=Path(output_dir),
-        stats=stats
+        stats=stats,
     )
 
     try:
         files = await get_files_list(
-            context=context,
-            start_date=start_date,
-            end_date=end_date,
-            limit=limit
+            context=context, start_date=start_date, end_date=end_date, limit=limit
         )
-            
+
         context.stats.total_files = len(files)
         total_size = sum(file.size or 0 for file in files)
-        log.info(f"Found {len(files)} files in date range {start_date} to {end_date} (Total size: {format_size(total_size)})")
+        log.info(
+            f"Found {len(files)} files in date range {start_date} to {end_date} (Total size: {format_size(total_size)})"
+        )
 
         # Main progress bar for overall progress (both files and bytes)
-        with tqdm(
-            total=total_size,
-            desc="Overall Progress",
-            unit="iB",
-            unit_scale=True,
-            unit_divisor=1024,
-            miniters=1,
-        ) as bytes_progress, tqdm(
-            total=len(files),
-            desc="Files Progress",
-            unit="file",
-            leave=False,
-            miniters=1,
-        ) as files_progress:
+        with (
+            async_tqdm(
+                total=total_size,
+                desc="Overall Progress",
+                unit="iB",
+                unit_scale=True,
+                unit_divisor=1024,
+                miniters=1,
+            ) as bytes_progress,
+            async_tqdm(
+                total=len(files),
+                desc="Files Progress",
+                unit="file",
+                leave=False,
+                miniters=1,
+            ) as files_progress,
+        ):
             # Download files concurrently with semaphore limiting
             tasks = [
                 download_file(
@@ -314,12 +345,12 @@ async def download(
                     filename=file.filename,
                     expected_size=file.size or 0,
                     files_progress=files_progress,
-                    bytes_progress=bytes_progress
+                    bytes_progress=bytes_progress,
                 )
                 for file in files
                 if file.filename is not None  # Skip files with no filename
             ]
-            await asyncio.gather(*tasks, return_exceptions=True)
+            _ = await asyncio.gather(*tasks, return_exceptions=True)
 
         # Print summary
         # fmt: off
@@ -330,7 +361,7 @@ async def download(
         log.info(f"Failed downloads:       {len(context.stats.failed_files)}")
         log.info(f"Total data downloaded:  {format_size(context.stats.total_bytes_downloaded)}")
         # fmt: on
-        
+
         if context.stats.failed_files:
             log.warning("\nFailed downloads:")
             for filename in context.stats.failed_files:
