@@ -1,7 +1,8 @@
 from __future__ import annotations
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from kiota_abstractions.serialization import Parsable, ParseNode, SerializationWriter
-from typing import Any, Callable, Dict, List, Optional, TYPE_CHECKING, Union
+from typing import Any, Optional, TYPE_CHECKING, Union
 
 if TYPE_CHECKING:
     from .file_summary import FileSummary
@@ -9,7 +10,7 @@ if TYPE_CHECKING:
 @dataclass
 class ListFilesResponse(Parsable):
     # The files property
-    files: Optional[List[FileSummary]] = None
+    files: Optional[list[FileSummary]] = None
     # The isTruncated property
     is_truncated: Optional[bool] = None
     # The maxResults property
@@ -32,16 +33,16 @@ class ListFilesResponse(Parsable):
             raise TypeError("parse_node cannot be null.")
         return ListFilesResponse()
     
-    def get_field_deserializers(self,) -> Dict[str, Callable[[ParseNode], None]]:
+    def get_field_deserializers(self,) -> dict[str, Callable[[ParseNode], None]]:
         """
         The deserialization information for the current model
-        Returns: Dict[str, Callable[[ParseNode], None]]
+        Returns: dict[str, Callable[[ParseNode], None]]
         """
         from .file_summary import FileSummary
 
         from .file_summary import FileSummary
 
-        fields: Dict[str, Callable[[Any], None]] = {
+        fields: dict[str, Callable[[Any], None]] = {
             "files": lambda n : setattr(self, 'files', n.get_collection_of_object_values(FileSummary)),
             "isTruncated": lambda n : setattr(self, 'is_truncated', n.get_bool_value()),
             "maxResults": lambda n : setattr(self, 'max_results', n.get_int_value()),
@@ -59,8 +60,6 @@ class ListFilesResponse(Parsable):
         """
         if writer is None:
             raise TypeError("writer cannot be null.")
-        from .file_summary import FileSummary
-
         writer.write_collection_of_object_values("files", self.files)
         writer.write_bool_value("isTruncated", self.is_truncated)
         writer.write_int_value("maxResults", self.max_results)

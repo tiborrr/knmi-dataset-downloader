@@ -1,4 +1,5 @@
 from __future__ import annotations
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from kiota_abstractions.base_request_builder import BaseRequestBuilder
 from kiota_abstractions.base_request_configuration import RequestConfiguration
@@ -9,7 +10,7 @@ from kiota_abstractions.request_adapter import RequestAdapter
 from kiota_abstractions.request_information import RequestInformation
 from kiota_abstractions.request_option import RequestOption
 from kiota_abstractions.serialization import Parsable, ParsableFactory
-from typing import Any, Callable, Dict, List, Optional, TYPE_CHECKING, Union
+from typing import Any, Optional, TYPE_CHECKING, Union
 from warnings import warn
 
 if TYPE_CHECKING:
@@ -22,7 +23,7 @@ class FilesRequestBuilder(BaseRequestBuilder):
     """
     Builds and executes requests for operations under /v1/datasets/{datasetName}/versions/{versionId}/files
     """
-    def __init__(self,request_adapter: RequestAdapter, path_parameters: Union[str, Dict[str, Any]]) -> None:
+    def __init__(self,request_adapter: RequestAdapter, path_parameters: Union[str, dict[str, Any]]) -> None:
         """
         Instantiates a new FilesRequestBuilder and sets the default values.
         param path_parameters: The raw url or the url-template parameters for the request.
@@ -110,10 +111,10 @@ class FilesRequestBuilder(BaseRequestBuilder):
                 return "sorting"
             return original_name
         
-        # This parameter controls filtering (together with end). It defines the lower limit of the requested data. If ordering by filename, provide a string. If ordering by lastModified or created, provide a timestamp.
+        # This parameter controls filtering (together with end). It defines the lower limit of the requested data. If ordering by filename, provide a string. If ordering by lastModified or created, provide a timestamp in ISO8601 format with a timezone (e.g. 2022-01-01T00:00:00Z).
         begin: Optional[str] = None
 
-        # This parameter controls filtering (together with begin). It defines the upper limit of the requested data. If ordering by filename, provide a string. If ordering by lastModified or created, provide a timestamp.
+        # This parameter controls filtering (together with begin). It defines the upper limit of the requested data. If ordering by filename, provide a string. If ordering by lastModified or created, provide a timestamp in ISO8601 format with a timezone (e.g. 2022-01-01T00:00:00Z).
         end: Optional[str] = None
 
         # Maximum number of files to return

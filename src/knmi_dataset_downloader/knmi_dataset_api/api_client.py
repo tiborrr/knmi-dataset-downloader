@@ -1,15 +1,11 @@
 from __future__ import annotations
+from collections.abc import Callable
 from kiota_abstractions.api_client_builder import enable_backing_store_for_serialization_writer_factory, register_default_deserializer, register_default_serializer
 from kiota_abstractions.base_request_builder import BaseRequestBuilder
 from kiota_abstractions.get_path_parameters import get_path_parameters
 from kiota_abstractions.request_adapter import RequestAdapter
 from kiota_abstractions.serialization import ParseNodeFactoryRegistry, SerializationWriterFactoryRegistry
-from kiota_serialization_form.form_serialization_writer_factory import FormSerializationWriterFactory
-from kiota_serialization_json.json_parse_node_factory import JsonParseNodeFactory
-from kiota_serialization_json.json_serialization_writer_factory import JsonSerializationWriterFactory
-from kiota_serialization_multipart.multipart_serialization_writer_factory import MultipartSerializationWriterFactory
-from kiota_serialization_text.text_serialization_writer_factory import TextSerializationWriterFactory
-from typing import Any, Callable, Dict, List, Optional, TYPE_CHECKING, Union
+from typing import Any, Optional, TYPE_CHECKING, Union
 
 if TYPE_CHECKING:
     from .v1.v1_request_builder import V1RequestBuilder
@@ -27,11 +23,6 @@ class ApiClient(BaseRequestBuilder):
         if request_adapter is None:
             raise TypeError("request_adapter cannot be null.")
         super().__init__(request_adapter, "{+baseurl}", None)
-        register_default_serializer(JsonSerializationWriterFactory)
-        register_default_serializer(TextSerializationWriterFactory)
-        register_default_serializer(FormSerializationWriterFactory)
-        register_default_serializer(MultipartSerializationWriterFactory)
-        register_default_deserializer(JsonParseNodeFactory)
         if not self.request_adapter.base_url:
             self.request_adapter.base_url = "https://api.dataplatform.knmi.nl/open-data"
         self.path_parameters["base_url"] = self.request_adapter.base_url

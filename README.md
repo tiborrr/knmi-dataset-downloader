@@ -134,6 +134,12 @@ Heavy use of the **anonymous** Open Data API can result in **HTTP 429**; KNMI ma
 - **Lint / types:** `uv run ruff check src tests`, `uv run basedpyright src tests` (see `pyproject.toml`).
 - **Integration tests** call the real KNMI API; they may **skip** on 429.
 
+### KNMI Open Data API client (Kiota)
+
+The HTTP client under `src/knmi_dataset_downloader/knmi_dataset_api` is generated with [Kiota](https://github.com/microsoft/kiota) from the KNMI OpenAPI description. Workspace metadata lives in [`.kiota/workspace.json`](.kiota/workspace.json) (and [`.kiota/apimanifest.json`](.kiota/apimanifest.json)).
+
+To **explore** the API surface and OpenAPI in the editor, install the [Kiota extension for Visual Studio Code](https://marketplace.visualstudio.com/items?itemName=ms-graph.kiota), open this repository, and use the extension’s explorer (e.g. browse the description and see how it maps to the generated request builders). Regenerating the client is optional; if you need to, use the Kiota CLI or the extension’s generate flow with that workspace configuration.
+
 ## Contributing
 
 Contributions are welcome. Please open a Pull Request; for larger changes, open an issue first.
