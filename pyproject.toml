@@ -44,6 +44,7 @@ extend-exclude = ["**/knmi_dataset_api/**"]
 
 [tool.basedpyright]
 pythonVersion = "3.14"
+typeCheckingMode = "standard"
 include = ["src", "tests"]
 exclude = [
     "**/knmi_dataset_api/**",
