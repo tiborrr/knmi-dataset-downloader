@@ -6,13 +6,23 @@
         "-p",
         "test_*.py"
     ],
-    "python.testing.pytestEnabled": false,
-    "python.testing.unittestEnabled": true,
+    "python.testing.pytestEnabled": true,
+    "python.testing.unittestEnabled": false,
     "python.analysis.diagnosticMode": "workspace",
     "python.analysis.typeCheckingMode": "basic",
     "python.analysis.exclude": [
         "src/knmi_dataset_downloader/knmi_dataset_api",
         ".venv",
         ".venv-test"
+    ],
+    "cursorpyright.analysis.diagnosticMode": "workspace",
+    "cursorpyright.analysis.exclude": [
+        "src/knmi_dataset_downloader/knmi_dataset_api",
+        ".venv",
+        ".venv-test"
+    ],
+    "cursorpyright.analysis.typeCheckingMode": "standard",
+    "python.testing.pytestArgs": [
+        "tests"
     ]
 }

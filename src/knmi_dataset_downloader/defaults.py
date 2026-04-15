@@ -1,24 +1,18 @@
+from __future__ import annotations
+
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from datetime import datetime, timedelta
+from typing import Final
 
-# Default output directory
-DEFAULT_OUTPUT_DIR = Path("./datasets")
+DEFAULT_OUTPUT_DIR: Final = Path("./datasets")
+DEFAULT_DATASET_NAME: Final[str] = "Actuele10mindataKNMIstations"
+DEFAULT_DATASET_VERSION: Final[str] = "2"
+DEFAULT_MAX_CONCURRENT: Final[int] = 10
+DEFAULT_TIME_WINDOW: Final[timedelta] = timedelta(hours=1, minutes=30)
 
-# Default dataset name
-DEFAULT_DATASET_NAME = "Actuele10mindataKNMIstations"
 
-# Default dataset version
-DEFAULT_DATASET_VERSION = "2"
-
-# Default maximum number of concurrent downloads
-DEFAULT_MAX_CONCURRENT = 10
-
-# Default time window
-DEFAULT_TIME_WINDOW = timedelta(hours=1, minutes=30)
-
-# Default date range
 def get_default_date_range() -> tuple[datetime, datetime]:
-    """Get the default date range (now - 1 hour and 30 minutes to now)."""
-    end = datetime.now()
+    """Return the default query window as UTC, matching the KNMI API (+00:00)."""
+    end = datetime.now(UTC)
     start = end - DEFAULT_TIME_WINDOW
     return start, end

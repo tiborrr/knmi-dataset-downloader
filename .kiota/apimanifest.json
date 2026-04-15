@@ -1,0 +1,23 @@
+{
+  "applicationName": "application",
+  "apiDependencies": {
+    "ApiClient": {
+      "apiDescriptionUrl": "https://tyk-cdn.dataplatform.knmi.nl/open-data/openapi.json",
+      "apiDeploymentBaseUrl": "https://api.dataplatform.knmi.nl/open-data/",
+      "requests": [
+        {
+          "method": "GET",
+          "uriTemplate": "v1/datasets/{datasetName}/versions/{versionId}/files/{filename}/url"
+        },
+        {
+          "method": "GET",
+          "uriTemplate": "v1/datasets/{datasetName}/versions/{versionId}/files"
+        }
+      ],
+      "extensions": {
+        "x-ms-kiota-hash": "B4CB1C438C221E28ED3BF33DB64B5802C91308F540702B3D5FDCEE32908FCF24",
+        "x-ms-kiota-version": "1.31.1"
+      }
+    }
+  }
+}

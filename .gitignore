@@ -175,4 +175,7 @@ poetry.toml
 pyrightconfig.json
 
 # End of https://www.toptal.com/developers/gitignore/api/python
-.kiota
+# Kiota: track workspace + API manifest; ignore cached OpenAPI and other tooling files
+.kiota/*
+!.kiota/workspace.json
+!.kiota/apimanifest.json

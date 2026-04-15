@@ -1,31 +1,61 @@
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = ["uv_build>=0.11.3,<0.12"]
+build-backend = "uv_build"
 
 [project]
 name = "knmi-dataset-downloader"
-version = "1.10.0"
+version = "1.11.0"
 description = "A downloader for KNMI weather datasets"
 readme = "README.md"
 authors = [
     { name = "Tibor Casteleijn" }
 ]
 license = { text = "GPL-3.0-or-later" }
-requires-python = ">=3.7"
+requires-python = ">=3.14"
 dependencies = [
-    "aiofiles==24.1.0",
+    "aiofiles==25.1.0",
     "httpx==0.28.1",
-    "microsoft-kiota-abstractions==1.6.8",
-    "microsoft-kiota-http==1.6.8",
-    "microsoft-kiota-serialization-json==1.6.8",
-    "microsoft-kiota-serialization-text==1.6.8",
-    "microsoft-kiota-serialization-form==1.6.8",
-    "microsoft-kiota-serialization-multipart==1.6.8",
-    "tqdm==4.67.1"
+    "microsoft-kiota-abstractions==1.9.10",
+    "microsoft-kiota-http==1.9.10",
+    "microsoft-kiota-serialization-json==1.9.10",
+    "microsoft-kiota-serialization-text==1.9.10",
+    "microsoft-kiota-serialization-form==1.9.10",
+    "microsoft-kiota-serialization-multipart==1.9.10",
+    "tqdm==4.67.3",
 ]
 
 [project.scripts]
 knmi-download = "knmi_dataset_downloader.cli:main"
 
-[tool.hatch.build.targets.wheel]
-packages = ["src/knmi_dataset_downloader"] 
+[tool.uv.build-backend]
+wheel-exclude = [".DS_Store"]
+
+[dependency-groups]
+dev = [
+    "basedpyright>=1.39.0",
+    "pytest>=9.0.2",
+    "pytest-asyncio>=1.3.0",
+    "ruff>=0.15.9",
+]
+
+[tool.ruff]
+target-version = "py314"
+extend-exclude = ["**/knmi_dataset_api/**"]
+
+[tool.basedpyright]
+pythonVersion = "3.14"
+typeCheckingMode = "standard"
+include = ["src", "tests"]
+exclude = [
+    "**/knmi_dataset_api/**",
+    "**/.venv",
+    "**/site-packages",
+]
+venvPath = "."
+venv = ".venv"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+pythonpath = ["."]
+testpaths = ["tests"]

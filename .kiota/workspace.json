@@ -1,0 +1,25 @@
+{
+  "version": "1.0.0",
+  "clients": {
+    "ApiClient": {
+      "language": "Python",
+      "typeAccessModifier": "Public",
+      "structuredMimeTypes": [
+        "application/json",
+        "text/plain;q=0.9",
+        "application/x-www-form-urlencoded;q=0.2",
+        "multipart/form-data;q=0.1"
+      ],
+      "clientNamespaceName": "knmi_dataset_api",
+      "usesBackingStore": false,
+      "includeAdditionalData": true,
+      "excludeBackwardCompatible": false,
+      "disabledValidationRules": [],
+      "descriptionLocation": "https://tyk-cdn.dataplatform.knmi.nl/open-data/openapi.json",
+      "includePatterns": [],
+      "excludePatterns": [],
+      "outputPath": "./src/knmi_dataset_downloader/knmi_dataset_api"
+    }
+  },
+  "plugins": {}
+}
