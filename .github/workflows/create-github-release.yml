@@ -1,0 +1,31 @@
+name: Create GitHub release from tag
+
+on:
+  push:
+    tags:
+      - "[0-9]*.[0-9]*.[0-9]*"
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Create release for pushed tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Keep this idempotent so reruns do not fail if the release exists.
+          if gh release view "${GITHUB_REF_NAME}" > /dev/null 2>&1; then
+            echo "Release ${GITHUB_REF_NAME} already exists; skipping."
+            exit 0
+          fi
+
+          if [[ "${GITHUB_REF_NAME}" == *"-rc"* ]]; then
+            gh release create "${GITHUB_REF_NAME}" \
+              --generate-notes \
+              --prerelease
+          else
+            gh release create "${GITHUB_REF_NAME}" \
+              --generate-notes
+          fi
