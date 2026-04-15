@@ -1,45 +1,48 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Protocol
 
 import aiofiles
 import httpx
-from tqdm.asyncio import tqdm as async_tqdm
 from kiota_abstractions.authentication.api_key_authentication_provider import (
     ApiKeyAuthenticationProvider,
     KeyLocation,
 )
 from kiota_http.httpx_request_adapter import HttpxRequestAdapter
+from kiota_serialization_json.json_parse_node_factory import JsonParseNodeFactory
 from kiota_serialization_json.json_serialization_writer_factory import (
     JsonSerializationWriterFactory,
 )
-from kiota_serialization_json.json_parse_node_factory import JsonParseNodeFactory
+from tqdm.asyncio import tqdm as async_tqdm
 
-from .knmi_dataset_api.api_client import ApiClient
-from .knmi_dataset_api.models.file_summary import FileSummary
-from .knmi_dataset_api.v1.datasets.item.versions.item.files.files_request_builder import (
-    FilesRequestBuilder,
-)
-from .knmi_dataset_api.v1.datasets.item.versions.item.files.get_order_by_query_parameter_type import (
-    GetOrderByQueryParameterType,
-)
-from .knmi_dataset_api.v1.datasets.item.versions.item.files.get_sorting_query_parameter_type import (
-    GetSortingQueryParameterType,
-)
+from .api_key import get_anonymous_api_key
 from .defaults import (
-    DEFAULT_OUTPUT_DIR,
     DEFAULT_DATASET_NAME,
     DEFAULT_DATASET_VERSION,
     DEFAULT_MAX_CONCURRENT,
+    DEFAULT_OUTPUT_DIR,
     get_default_date_range,
 )
-from .api_key import get_anonymous_api_key
+from .knmi_dataset_api.api_client import ApiClient
+from .knmi_dataset_api.models.file_summary import FileSummary
+from .knmi_dataset_api.v1.datasets.item.versions.item.files import (
+    files_request_builder,
+    get_order_by_query_parameter_type,
+    get_sorting_query_parameter_type,
+)
 
-import logging
+FilesRequestBuilder = files_request_builder.FilesRequestBuilder
+GetOrderByQueryParameterType = (
+    get_order_by_query_parameter_type.GetOrderByQueryParameterType
+)
+GetSortingQueryParameterType = (
+    get_sorting_query_parameter_type.GetSortingQueryParameterType
+)
 
 log = logging.getLogger(__name__)
 
@@ -113,7 +116,7 @@ def _api_utc_iso(dt: datetime) -> str:
     """Format *dt* as a UTC instant with +00:00 for KNMI list-files queries."""
     if dt.tzinfo is None:
         dt = dt.astimezone()
-    return dt.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S+00:00")
+    return dt.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%S+00:00")
 
 
 async def get_files_list(
@@ -254,12 +257,11 @@ async def download_file(
 
             context.stats.downloaded_files += 1
             context.stats.total_bytes_downloaded += downloaded_size
-            log.debug(
-                f"Successfully downloaded: {filename} ({downloaded_size / 1024 / 1024:.1f} MB)"
-            )
+            mb = downloaded_size / 1024 / 1024
+            log.debug(f"Successfully downloaded: {filename} ({mb:.1f} MB)")
 
         except Exception as e:
-            log.error(f"Error downloading {filename}: {str(e)}")
+            log.error(f"Error downloading {filename}: {e!s}")
             context.stats.failed_files.append(filename)
             if output_path.exists():
                 output_path.unlink()  # Remove partially downloaded file
@@ -284,9 +286,9 @@ async def download(
         version (str): Version of the dataset.
         max_concurrent (int): Maximum number of concurrent downloads.
         output_dir (str | Path): Output directory for downloaded files.
-        start_date (datetime | None): Start date for files to download. Defaults to 1 hour and 30 minutes ago.
-        end_date (datetime | None): End date for files to download. Defaults to now.
-        limit (int | None): Maximum number of files to download. If None, downloads all files.
+        start_date (datetime | None): Start of file range. Default: 1h30m ago.
+        end_date (datetime | None): End of file range. Default: now.
+        limit (int | None): Max files to download. None means all.
 
     Returns:
         DownloadStats: Statistics about the download process
@@ -317,7 +319,11 @@ async def download(
         context.stats.total_files = len(files)
         total_size = sum(file.size or 0 for file in files)
         log.info(
-            f"Found {len(files)} files in date range {start_date} to {end_date} (Total size: {format_size(total_size)})"
+            "Found %s files in date range %s to %s (Total size: %s)",
+            len(files),
+            start_date,
+            end_date,
+            format_size(total_size),
         )
 
         # Main progress bar for overall progress (both files and bytes)
@@ -359,7 +365,8 @@ async def download(
         log.info(f"Files already present:  {context.stats.skipped_files}")
         log.info(f"Files downloaded:       {context.stats.downloaded_files}")
         log.info(f"Failed downloads:       {len(context.stats.failed_files)}")
-        log.info(f"Total data downloaded:  {format_size(context.stats.total_bytes_downloaded)}")
+        dl = format_size(context.stats.total_bytes_downloaded)
+        log.info(f"Total data downloaded:  {dl}")
         # fmt: on
 
         if context.stats.failed_files:
@@ -368,7 +375,7 @@ async def download(
                 log.warning(f"- {filename}")
 
     except Exception as e:
-        log.error(f"Error during download process: {str(e)}")
+        log.error(f"Error during download process: {e!s}")
         raise
 
     finally:

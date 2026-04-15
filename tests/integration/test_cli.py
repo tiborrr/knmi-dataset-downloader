@@ -4,7 +4,6 @@ from datetime import datetime
 from unittest.mock import patch
 
 from src.knmi_dataset_downloader.cli import async_main
-
 from tests.integration.api_helpers import RunKnmiApiCall
 from tests.integration.harness import CliDownloadSession
 
@@ -30,7 +29,7 @@ async def test_cli_with_real_api(
     ]
 
     async def run_cli() -> None:
-        with patch("sys.argv", ["knmi-download"] + test_args):
+        with patch("sys.argv", ["knmi-download", *test_args]):
             await async_main()
 
     await run_knmi_call(run_cli)
@@ -59,7 +58,7 @@ async def test_cli_with_defaults(
                 "src.knmi_dataset_downloader.cli.get_default_date_range",
                 return_value=cli_patched_default_range,
             ),
-            patch("sys.argv", ["knmi-download"] + test_args),
+            patch("sys.argv", ["knmi-download", *test_args]),
         ):
             await async_main()
 

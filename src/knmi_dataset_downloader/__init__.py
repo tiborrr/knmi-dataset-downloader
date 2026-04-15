@@ -1,4 +1,4 @@
-from .dataset import download, DownloadStats
+from .dataset import DownloadStats, download
 from .defaults import (
     DEFAULT_DATASET_NAME,
     DEFAULT_DATASET_VERSION,
@@ -7,10 +7,10 @@ from .defaults import (
 )
 
 __all__ = [
-    "download",
-    "DownloadStats",
     "DEFAULT_DATASET_NAME",
     "DEFAULT_DATASET_VERSION",
     "DEFAULT_MAX_CONCURRENT",
     "DEFAULT_OUTPUT_DIR",
+    "DownloadStats",
+    "download",
 ]

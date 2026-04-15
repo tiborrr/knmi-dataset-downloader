@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import AsyncGenerator
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import httpx
@@ -10,7 +10,6 @@ import pytest_asyncio
 
 from src.knmi_dataset_downloader import DownloadStats
 from src.knmi_dataset_downloader.dataset import DownloadContext, initialize_client
-
 from tests.integration.api_helpers import RunKnmiApiCall, run_or_skip_on_429
 from tests.integration.harness import CliDownloadSession, KnmiDownloaderSession
 
@@ -37,8 +36,8 @@ def knmi_sample_window_day() -> tuple[datetime, datetime]:
 def cli_patched_default_range() -> tuple[datetime, datetime]:
     """UTC range substituted for CLI default-date resolution (stable, has data)."""
     return (
-        datetime(2024, 1, 1, 0, 0, 0, tzinfo=timezone.utc),
-        datetime(2024, 1, 1, 0, 30, 0, tzinfo=timezone.utc),
+        datetime(2024, 1, 1, 0, 0, 0, tzinfo=UTC),
+        datetime(2024, 1, 1, 0, 30, 0, tzinfo=UTC),
     )
 
 

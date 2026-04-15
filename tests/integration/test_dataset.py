@@ -2,9 +2,8 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from src.knmi_dataset_downloader import download, DownloadStats
+from src.knmi_dataset_downloader import DownloadStats, download
 from src.knmi_dataset_downloader.dataset import get_files_list
-
 from tests.integration.api_helpers import RunKnmiApiCall
 from tests.integration.harness import KnmiDownloaderSession
 

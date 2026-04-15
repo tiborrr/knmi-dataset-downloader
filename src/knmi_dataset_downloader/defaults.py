@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Final
 
@@ -13,6 +13,6 @@ DEFAULT_TIME_WINDOW: Final[timedelta] = timedelta(hours=1, minutes=30)
 
 def get_default_date_range() -> tuple[datetime, datetime]:
     """Return the default query window as UTC, matching the KNMI API (+00:00)."""
-    end = datetime.now(timezone.utc)
+    end = datetime.now(UTC)
     start = end - DEFAULT_TIME_WINDOW
     return start, end

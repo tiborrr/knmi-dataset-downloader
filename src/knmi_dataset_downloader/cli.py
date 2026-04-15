@@ -5,20 +5,21 @@ import asyncio
 from datetime import datetime
 from pathlib import Path
 from typing import cast
+
 from . import dataset
+from .api_key import get_anonymous_api_key
 from .defaults import (
-    DEFAULT_OUTPUT_DIR,
     DEFAULT_DATASET_NAME,
     DEFAULT_DATASET_VERSION,
     DEFAULT_MAX_CONCURRENT,
+    DEFAULT_OUTPUT_DIR,
     DEFAULT_TIME_WINDOW,
     get_default_date_range,
 )
-from .api_key import get_anonymous_api_key
 
 
 def parse_date(date_str: str) -> datetime | None:
-    """Parse date string in ISO 8601 format (e.g., 2024-01-01T00:00:00 or 2024-01-01)."""
+    """Parse date string in ISO 8601 (e.g. 2024-01-01T00:00:00 or 2024-01-01)."""
     if not date_str:
         return None
     try:
@@ -57,7 +58,8 @@ async def async_main() -> None:
         type=int,
         default=DEFAULT_MAX_CONCURRENT,
         help=(
-            f"Maximum number of concurrent downloads (default: {DEFAULT_MAX_CONCURRENT})"
+            "Maximum number of concurrent downloads "
+            f"(default: {DEFAULT_MAX_CONCURRENT})"
         ),
     )
     _ = parser.add_argument(
@@ -103,7 +105,8 @@ async def async_main() -> None:
     api_key: str | None = cast(str | None, args.api_key)
     if not api_key:
         print(
-            "No API key provided, fetching anonymous API key from KNMI developer portal..."
+            "No API key provided, fetching anonymous API key from KNMI developer "
+            "portal..."
         )
         try:
             api_key = await get_anonymous_api_key()
