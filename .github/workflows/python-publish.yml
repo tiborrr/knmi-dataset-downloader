@@ -1,10 +1,11 @@
 name: Build and publish Python package
 
 on:
-  release:
-    types: [published]
   pull_request:
     branches: [ main ]
+  push:
+    tags:
+      - "[0-9]*.[0-9]*.[0-9]*"
 
 jobs:
   test-general:
@@ -70,7 +71,7 @@ jobs:
     permissions:
       id-token: write
     
-    if: github.event_name == 'release' && contains(github.ref, '-rc')
+    if: github.event_name == 'push' && contains(github.ref_name, '-rc')
     
     steps:
       - uses: actions/checkout@v4
@@ -99,7 +100,7 @@ jobs:
     permissions:
       id-token: write
     
-    if: github.event_name == 'release' && !contains(github.ref, '-rc')
+    if: github.event_name == 'push' && !contains(github.ref_name, '-rc')
     
     steps:
       - uses: actions/checkout@v4
