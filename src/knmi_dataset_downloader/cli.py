@@ -6,6 +6,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import cast
 
+import httpx
+
 from . import dataset
 from .api_key import get_anonymous_api_key
 from .defaults import (
@@ -110,7 +112,7 @@ async def async_main() -> None:
         )
         try:
             api_key = await get_anonymous_api_key()
-        except Exception as err:
+        except (httpx.HTTPError, ValueError) as err:
             print(f"Error fetching anonymous API key: {err}")
             print("Please provide an API key using the --api-key argument")
             return

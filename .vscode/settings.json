@@ -9,7 +9,7 @@
     "python.testing.pytestEnabled": true,
     "python.testing.unittestEnabled": false,
     "python.analysis.diagnosticMode": "workspace",
-    "python.analysis.typeCheckingMode": "basic",
+    "python.analysis.typeCheckingMode": "strict",
     "python.analysis.exclude": [
         "src/knmi_dataset_downloader/knmi_dataset_api",
         ".venv",
@@ -21,7 +21,7 @@
         ".venv",
         ".venv-test"
     ],
-    "cursorpyright.analysis.typeCheckingMode": "standard",
+    "cursorpyright.analysis.typeCheckingMode": "strict",
     "python.testing.pytestArgs": [
         "tests"
     ]

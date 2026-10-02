@@ -5,7 +5,7 @@ import logging
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Protocol
+from typing import TYPE_CHECKING, Protocol
 
 import aiofiles
 import httpx
@@ -29,12 +29,14 @@ from .defaults import (
     get_default_date_range,
 )
 from .knmi_dataset_api.api_client import ApiClient
-from .knmi_dataset_api.models.file_summary import FileSummary
 from .knmi_dataset_api.v1.datasets.item.versions.item.files import (
     files_request_builder,
     get_order_by_query_parameter_type,
     get_sorting_query_parameter_type,
 )
+
+if TYPE_CHECKING:
+    from .knmi_dataset_api.models.file_summary import FileSummary
 
 FilesRequestBuilder = files_request_builder.FilesRequestBuilder
 GetOrderByQueryParameterType = (
@@ -139,10 +141,9 @@ async def get_files_list(
     # Use default date range if not specified
     if start_date is None or end_date is None:
         default_start, default_end = get_default_date_range()
-        start_date = start_date or default_start
-        end_date = end_date or default_end
+        start_date = default_start if start_date is None else start_date
+        end_date = default_end if end_date is None else end_date
 
-    assert isinstance(start_date, datetime) and isinstance(end_date, datetime)
     begin = _api_utc_iso(start_date)
     end_iso = _api_utc_iso(end_date)
 
@@ -258,10 +259,10 @@ async def download_file(
             context.stats.downloaded_files += 1
             context.stats.total_bytes_downloaded += downloaded_size
             mb = downloaded_size / 1024 / 1024
-            log.debug(f"Successfully downloaded: {filename} ({mb:.1f} MB)")
+            log.debug("Successfully downloaded: %s (%.1f MB)", filename, mb)
 
         except Exception as e:
-            log.error(f"Error downloading {filename}: {e!s}")
+            log.error("Error downloading %s: %s", filename, e)
             context.stats.failed_files.append(filename)
             if output_path.exists():
                 output_path.unlink()  # Remove partially downloaded file
@@ -299,16 +300,18 @@ async def download(
     # Initialize clients and context
     client = initialize_client(api_key)
     http_client = httpx.AsyncClient()
-    stats = DownloadStats()
+
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
 
     context = DownloadContext(
         client=client,
         http_client=http_client,
-        semaphore=asyncio.Semaphore(max_concurrent),
         dataset_name=dataset_name,
         version=version,
-        output_dir=Path(output_dir),
-        stats=stats,
+        output_dir=output_path,
+        stats=DownloadStats(),
+        semaphore=asyncio.Semaphore(max_concurrent),
     )
 
     try:
@@ -316,33 +319,27 @@ async def download(
             context=context, start_date=start_date, end_date=end_date, limit=limit
         )
 
-        context.stats.total_files = len(files)
+        total_files = len(files)
         total_size = sum(file.size or 0 for file in files)
-        log.info(
-            "Found %s files in date range %s to %s (Total size: %s)",
-            len(files),
-            start_date,
-            end_date,
-            format_size(total_size),
-        )
+
+        context.stats.total_files = total_files
 
         # Main progress bar for overall progress (both files and bytes)
         with (
             async_tqdm(
+                total=total_files,
+                desc="Total Files",
+                position=0,
+                leave=True,
+            ) as files_progress,
+            async_tqdm(
                 total=total_size,
-                desc="Overall Progress",
+                desc="Total Bytes",
                 unit="iB",
                 unit_scale=True,
-                unit_divisor=1024,
-                miniters=1,
+                position=1,
+                leave=True,
             ) as bytes_progress,
-            async_tqdm(
-                total=len(files),
-                desc="Files Progress",
-                unit="file",
-                leave=False,
-                miniters=1,
-            ) as files_progress,
         ):
             # Download files concurrently with semaphore limiting
             tasks = [
@@ -354,28 +351,28 @@ async def download(
                     bytes_progress=bytes_progress,
                 )
                 for file in files
-                if file.filename is not None  # Skip files with no filename
+                if file.filename is not None
             ]
             _ = await asyncio.gather(*tasks, return_exceptions=True)
 
         # Print summary
         # fmt: off
         log.info("\nDownload Summary:")
-        log.info(f"Total files found:      {context.stats.total_files}")
-        log.info(f"Files already present:  {context.stats.skipped_files}")
-        log.info(f"Files downloaded:       {context.stats.downloaded_files}")
-        log.info(f"Failed downloads:       {len(context.stats.failed_files)}")
+        log.info("Total files found:      %s", context.stats.total_files)
+        log.info("Files already present:  %s", context.stats.skipped_files)
+        log.info("Files downloaded:       %s", context.stats.downloaded_files)
+        log.info("Failed downloads:       %s", len(context.stats.failed_files))
         dl = format_size(context.stats.total_bytes_downloaded)
-        log.info(f"Total data downloaded:  {dl}")
+        log.info("Total data downloaded:  %s", dl)
         # fmt: on
 
         if context.stats.failed_files:
             log.warning("\nFailed downloads:")
             for filename in context.stats.failed_files:
-                log.warning(f"- {filename}")
+                log.warning("- %s", filename)
 
     except Exception as e:
-        log.error(f"Error during download process: {e!s}")
+        log.error("Error during download process: %s", e)
         raise
 
     finally:

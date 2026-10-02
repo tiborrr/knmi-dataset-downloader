@@ -1,10 +1,10 @@
 [build-system]
-requires = ["uv_build>=0.11.3,<0.12"]
+requires = ["uv_build>=0.11.3,<0.13"]
 build-backend = "uv_build"
 
 [project]
 name = "knmi-dataset-downloader"
-version = "1.14.0"
+version = "1.15.0"
 description = "A downloader for KNMI weather datasets"
 readme = "README.md"
 authors = [
@@ -15,13 +15,13 @@ requires-python = ">=3.14"
 dependencies = [
     "aiofiles==25.1.0",
     "httpx==0.28.1",
-    "microsoft-kiota-abstractions==1.9.10",
-    "microsoft-kiota-http==1.9.10",
-    "microsoft-kiota-serialization-json==1.9.10",
-    "microsoft-kiota-serialization-text==1.9.10",
-    "microsoft-kiota-serialization-form==1.9.10",
-    "microsoft-kiota-serialization-multipart==1.9.10",
-    "tqdm==4.67.3",
+    "microsoft-kiota-abstractions==1.14.1",
+    "microsoft-kiota-http==1.14.1",
+    "microsoft-kiota-serialization-json==1.14.1",
+    "microsoft-kiota-serialization-text==1.14.1",
+    "microsoft-kiota-serialization-form==1.14.1",
+    "microsoft-kiota-serialization-multipart==1.14.1",
+    "tqdm==4.70.1",
 ]
 
 [project.scripts]
@@ -32,19 +32,78 @@ wheel-exclude = [".DS_Store"]
 
 [dependency-groups]
 dev = [
-    "basedpyright>=1.39.0",
-    "pytest>=9.0.2",
-    "pytest-asyncio>=1.3.0",
-    "ruff>=0.15.9",
+    "basedpyright>=1.40.1",
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+    "ruff>=0.16.10",
 ]
 
 [tool.ruff]
 target-version = "py314"
 extend-exclude = ["**/knmi_dataset_api/**"]
 
+[tool.ruff.lint]
+select = [
+    "A",
+    "ARG",
+    "ASYNC",
+    "B",
+    "BLE",
+    "C4",
+    "DTZ",
+    "E",
+    "ERA",
+    "F",
+    "FA",
+    "FURB",
+    "G",
+    "I",
+    "LOG",
+    "N",
+    "PERF",
+    "PGH",
+    "PIE",
+    "PL",
+    "PT",
+    "PTH",
+    "Q",
+    "RET",
+    "RSE",
+    "RUF",
+    "S",
+    "SIM",
+    "SLF",
+    "TCH",
+    "TID",
+    "UP",
+    "W",
+    "YTT",
+]
+ignore = [
+    "ASYNC240", # Blocking Path methods (mkdir) in async functions
+    "PLR0913",  # Too many arguments (e.g. download() has 8 parameters)
+    "PLR0917",  # Too many positional arguments
+    "PLR2004",  # Magic value used in comparison
+    "TC006",    # Add quotes in typing.cast()
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = [
+    "ARG001",  # Pytest fixture parameters appear unused
+    "ARG002",  # Unused method arguments in test harnesses
+    "DTZ",     # Naive datetimes used in tests
+    "PLR",     # Complex tests / magic values
+    "PT018",   # Composite assertion statements
+    "S101",    # Asserts allowed in tests
+    "TC",      # Type checking blocks not needed in tests
+]
+"src/knmi_dataset_downloader/cli.py" = [
+    "S101",    # Assert api_key is not None after check
+]
+
 [tool.basedpyright]
 pythonVersion = "3.14"
-typeCheckingMode = "standard"
+typeCheckingMode = "strict"
 include = ["src", "tests"]
 exclude = [
     "**/knmi_dataset_api/**",
